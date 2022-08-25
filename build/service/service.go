@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 var (
@@ -16,6 +17,28 @@ func HelloHandler(writer http.ResponseWriter, req *http.Request) {
 	case "POST":
 		var website []string
 		json.NewDecoder(req.Body).Decode(&website)
+		go checkWebsiteStatus(website)
+	case "GET":
+		value := req.URL.Query().Get("website")
+		if value != "" {
+			jsonVal, err := json.Marshal(status[value])
+			if err != nil {
+				fmt.Println("Error occurred=", err.Error())
+			}
+			writer.Write(jsonVal)
+			return
+		}
+		fmt.Println("Before Get Logic is executed=", status)
+		jsonVal, err := json.Marshal(status)
+		if err != nil {
+			fmt.Println("Error occurred=", err.Error())
+		}
+		writer.Write(jsonVal)
+	}
+}
+
+func checkWebsiteStatus(website []string) {
+	for {
 		for _, val := range website {
 			_, err := http.Get("http://" + val)
 			if err != nil {
@@ -24,23 +47,6 @@ func HelloHandler(writer http.ResponseWriter, req *http.Request) {
 				status[val] = "UP"
 			}
 		}
-		fmt.Println("After Post Logic is executed=", status)
-	case "GET":
-		value := req.URL.Query().Get("website")
-		if value != "" {
-
-			jsonVal, err := json.Marshal(status[value])
-			if err != nil {
-				fmt.Println("Error occured=", err.Error())
-			}
-			writer.Write(jsonVal)
-			return
-		}
-		fmt.Println("Before Get Logic is executed=", status)
-		jsonVal, err := json.Marshal(status)
-		if err != nil {
-			fmt.Println("Error occured=", err.Error())
-		}
-		writer.Write(jsonVal)
+		time.Sleep(time.Minute)
 	}
 }
